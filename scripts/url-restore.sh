@@ -40,6 +40,11 @@ while getopts ":s:c:b:d:p:o:" opt; do
 done
 shift $((OPTIND -1))
 
+green=`tput setaf 2`
+red=`tput setaf 1`
+reset=`tput sgr0`
+
+
 # Check if required options are provided
 if [[ -z $sas_key || -z $container_url || -z $backup_urls || -z $database_name || -z $password ]]; then
     echo "Missing required options"
@@ -48,14 +53,14 @@ if [[ -z $sas_key || -z $container_url || -z $backup_urls || -z $database_name |
 fi
 
 echo
-echo "Starting database restore"
+echo "${reset}Starting database restore"
 echo
 
 # Drop the credential if it exists
-sqlcmd -S localhost -U sa -P "$password" -Q "IF EXISTS (SELECT * FROM sys.credentials WHERE name = '$container_url') DROP CREDENTIAL [$container_url];"
+sqlcmd -S localhost -U sa -P "$password" -b -Q "IF EXISTS (SELECT * FROM sys.credentials WHERE name = '$container_url') DROP CREDENTIAL [$container_url];"
 
 # Create credential with new SAS key
-sqlcmd -S localhost -U sa -P "$password" -Q "CREATE CREDENTIAL [$container_url] WITH IDENTITY = 'SHARED ACCESS SIGNATURE', SECRET = '$sas_key';"
+sqlcmd -S localhost -U sa -P "$password" -b -Q "CREATE CREDENTIAL [$container_url] WITH IDENTITY = 'SHARED ACCESS SIGNATURE', SECRET = '$sas_key';"
 
 # Split multiple URLs into an array
 IFS=',' read -r -a url_array <<< "$backup_urls"
@@ -65,9 +70,13 @@ url_list=""
 for url in "${url_array[@]}"; do
     url_list+="URL = '$url',"
 done
-url_list="${url_list%,}"  # Remove the trailing comma
 
-echo "Using URLs: $url_list"
+# Remove the trailing comma
+url_list="${url_list%,}"
+
+echo "Using URLs:"
+echo "$url_list"
+echo
 
 # Execute FILELISTONLY and extract logical file names
 filelist_output=$(sqlcmd -S localhost -U sa -P "$password" -Q "RESTORE FILELISTONLY FROM ${url_list};")
@@ -82,16 +91,27 @@ echo "Log logical name: $log_logical_name"
 # Construct the RESTORE DATABASE command
 restore_command="RESTORE DATABASE [$database_name] FROM ${url_list} WITH MOVE N'$data_logical_name' TO N'/var/opt/mssql/data/$data_logical_name.mdf', MOVE N'$log_logical_name' TO N'/var/opt/mssql/data/$log_logical_name.ldf'"
 
-echo
-echo "RESTORE command: $restore_command"
-echo
-
 # Append restore options if provided
 if [[ ! -z $restore_options ]]; then
     restore_command+=",$restore_options"
 fi
 
-# Execute the RESTORE DATABASE command
-sqlcmd -S localhost -U sa -P "$password" -Q "$restore_command"
+echo
+echo "Attempting database restore..."
+echo
 
-echo "Database '$database_name' has been restored"
+echo "$restore_command"
+echo
+
+# Execute the RESTORE DATABASE command
+sqlcmd -S localhost -U sa -P "$password" -b -Q "$restore_command"
+
+if [ $? -eq 0 ]; then
+    echo
+    echo "${green}Database '$database_name' has been restored :)${reset}"
+    echo
+else
+    echo
+    echo "${red}!!! FAILED to restore database '$database_name' !!!${reset}"
+    echo
+fi
