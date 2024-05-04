@@ -25,7 +25,7 @@ set -e
 
 # Function to print usage
 print_usage() {
-    echo "Usage: $0 -s <SAS key> -c <Azure container URL> -b <Backup URL(s)> -d <Database name> -p <Password> [-o <Misc SQL RESTORE options>]"
+    echo "Usage: $0 -s <SAS key> -c <Azure container URL> -b <Backup URL(s)> -d <Database name> -p <Password> [-h <Hostname> -o <Misc SQL RESTORE options>]"
 }
 
 # Parse command line options

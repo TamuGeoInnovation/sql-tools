@@ -1,0 +1,18 @@
+[
+  {
+    "sasKey": "sharedAccessToken",
+    "pwd": "password1234!",
+    "containerUrl": "https://storageAccount.blob.core.windows.net/containerName",
+    "urls": "https://storageAccount.blob.core.windows.net/containerName/db1.bak",
+    "host": "host.docker.internal",
+    "db": "db1"
+  },
+  {
+    "sasKey": "sharedAccessToken",
+    "pwd": "password1234!",
+    "containerUrl": "https://storageAccount.blob.core.windows.net/containerName",
+    "urls": "https://storageAccount.blob.core.windows.net/containerName/db2.bak",
+    "host": "host.docker.internal",
+    "db": "db2"
+  }
+]
