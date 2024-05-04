@@ -1,5 +1,7 @@
 # SQL Tools
 
+[![Docker Image](https://github.com/TamuGeoInnovation/sql-tools/actions/workflows/publish.yaml/badge.svg)](https://github.com/TamuGeoInnovation/sql-tools/actions/workflows/publish.yaml)
+
 This repository contains useful utility scripts for working with MSSQL databases. Additionally, it can be found and bundled as a container to make use of the tools in a containerized environment.
 
 ## Single URL Restore
