@@ -36,25 +36,33 @@ if [ -z "$configs" ]; then
 fi
 
 # Path to the restore script
-RESTORE_SCRIPT="./your_restore_script.sh"
+RESTORE_SCRIPT="./single-url-restore.sh"
 
 # Process each entry in the JSON blob
 echo "$configs" | while read -r config; do
     # Extract values from JSON or use command-line values if provided
-    local_sas_key=${sas_key:-$(echo "$config" | jq -r '.sas_key')}
-    local_password=${db_password:-$(echo "$config" | jq -r '.password')}
-    container_url=$(echo "$config" | jq -r '.container_url')
-    backup_urls=$(echo "$config" | jq -r '.backup_urls')
-    database_name=$(echo "$config" | jq -r '.database_name')
-    restore_options=$(echo "$config" | jq -r '.restore_options')
+    local_sas_key=${sas_key:-$(echo "$config" | jq -r '.sasKey')}
+    local_password=${db_password:-$(echo "$config" | jq -r '.pwd')}
+    container_url=$(echo "$config" | jq -r '.containerUrl')
+    backup_urls=$(echo "$config" | jq -r '.urls')
+    database_host=$(echo "$config" | jq -r '.host')
+    database_name=$(echo "$config" | jq -r '.db')
+    restore_options=$(echo "$config" | jq -r '.restoreOptions')
 
+    echo
     echo "Restoring $database_name..."
 
     # Construct the command line for the restore script
-    CMD="$RESTORE_SCRIPT -s \"$local_sas_key\" -c \"$container_url\" -b \"$backup_urls\" -d \"$database_name\" -p \"$local_password\""
+    CMD="$RESTORE_SCRIPT -s \"$local_sas_key\" -c \"$container_url\" -b \"$backup_urls\" -d \"$database_name\" -p \"$local_password\" -h \"$database_host\"" 
     
     if [ "$restore_options" != "null" ]; then
         CMD+=" -o \"$restore_options\""
+    fi
+
+    # If sas_key or password are null, skip the entry
+    if [ "$local_sas_key" == "null" ] || [ "$local_password" == "null" ]; then
+        echo "Skipping entry due to missing SAS key or password."
+        continue
     fi
 
     # Execute the restore script
