@@ -1,5 +1,27 @@
 #!/bin/bash
 
+#
+# This script is designed to retore a MSSQL database from a URL(s) using a Shared Access Signature (SAS) key.
+# The script requires the following parameters:
+# - SAS key for the Azure container: Required to access the backup file(s)
+# - Azure container URL: Required to create the scoped blob container credential
+# - Backup URL(s): Comma separated list of backup URLs. Many URL's are supported for striped backups.
+# - Database name: Name of database that will be created/overwritten
+# - Password: Password for the 'sa' user
+
+# The script will:
+# - Drop the existing credential if it exists
+# - Create a new credential with the provided SAS key
+# - Execute RESTORE FILELISTONLY to extract logical file names
+# - Construct the RESTORE DATABASE command
+# - Execute the RESTORE DATABASE command
+
+# The script also accepts an optional parameter for additional RESTORE options.
+# Example usage:
+# ./url-restore.sh -s "<SAS key>" -c "<Azure container URL>" -b "<Backup URL(s)>" -d "<Database name>" -p "<Password>" -o "REPLACE, STATS = 10"
+#
+#
+
 # Function to print usage
 print_usage() {
     echo "Usage: $0 -s <SAS key> -c <Azure container URL> -b <Backup URL(s)> -d <Database name> -p <Password> [-o <Misc SQL RESTORE options>]"
