@@ -28,7 +28,7 @@ print_usage() {
 }
 
 # Parse command line options
-while getopts ":s:c:b:d:p:o:" opt; do
+while getopts ":s:c:b:d:h:p:o:" opt; do
     case ${opt} in
         s )
             sas_key=$OPTARG
@@ -41,6 +41,9 @@ while getopts ":s:c:b:d:p:o:" opt; do
             ;;
         d )
             database_name=$OPTARG
+            ;;
+        h )
+            database_host=$OPTARG
             ;;
         p )
             password=$OPTARG
@@ -78,11 +81,23 @@ echo
 echo "${reset}Starting database restore"
 echo
 
+host="localhost"
+
+# If host is provided, use it
+if [[ ! -z $database_host ]]; then
+    host=$database_host
+    echo "Using host: $host"
+    echo
+else
+    echo "Using default host: $host"
+    echo
+fi
+
 # Drop the credential if it exists
-sqlcmd -S localhost -U sa -P "$password" -b -Q "IF EXISTS (SELECT * FROM sys.credentials WHERE name = '$container_url') DROP CREDENTIAL [$container_url];"
+sqlcmd -S $host -U sa -P "$password" -b -Q "IF EXISTS (SELECT * FROM sys.credentials WHERE name = '$container_url') DROP CREDENTIAL [$container_url];"
 
 # Create credential with new SAS key
-sqlcmd -S localhost -U sa -P "$password" -b -Q "CREATE CREDENTIAL [$container_url] WITH IDENTITY = 'SHARED ACCESS SIGNATURE', SECRET = '$sas_key';"
+sqlcmd -S $host -U sa -P "$password" -b -Q "CREATE CREDENTIAL [$container_url] WITH IDENTITY = 'SHARED ACCESS SIGNATURE', SECRET = '$sas_key';"
 
 # Split multiple URLs into an array
 IFS=',' read -r -a url_array <<< "$backup_urls"
@@ -101,7 +116,7 @@ echo "$url_list"
 echo
 
 # Execute FILELISTONLY and extract logical file names
-filelist_output=$(sqlcmd -S localhost -U sa -P "$password" -Q "RESTORE FILELISTONLY FROM ${url_list};")
+filelist_output=$(sqlcmd -S $host -U sa -P "$password" -Q "RESTORE FILELISTONLY FROM ${url_list};")
 
 # Extract logical file names from FILELISTONLY output
 data_logical_name=$(echo "$filelist_output" | awk 'NR==3 {print $1}')
@@ -126,7 +141,7 @@ echo "$restore_command"
 echo
 
 # Execute the RESTORE DATABASE command
-sqlcmd -S localhost -U sa -P "$password" -b -Q "$restore_command"
+sqlcmd -S $host -U sa -P "$password" -b -Q "$restore_command"
 
 if [ $? -eq 0 ]; then
     echo

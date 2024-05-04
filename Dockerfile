@@ -13,5 +13,6 @@ COPY /scripts .
 
 # Add scripts to the path
 ENV PATH=$PATH:/var/scripts/
+ENV PATH=$PATH:/opt/mssql-tools/bin/
 
 CMD [ "/opt/mssql-tools/bin/sqlcmd" ]
