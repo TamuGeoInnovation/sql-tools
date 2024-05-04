@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Usage function to display help
 usage() {

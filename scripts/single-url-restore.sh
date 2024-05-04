@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 #
 # This script is designed to retore a MSSQL database from a URL(s) using a Shared Access Signature (SAS) key.
@@ -65,9 +66,9 @@ while getopts ":s:c:b:d:h:p:o:" opt; do
 done
 shift $((OPTIND -1))
 
-green=`tput setaf 2`
-red=`tput setaf 1`
-reset=`tput sgr0`
+green=`tput -T xterm setaf 2`
+red=`tput -T xterm setaf 1`
+reset=`tput -T xterm sgr0`
 
 
 # Check if required options are provided
