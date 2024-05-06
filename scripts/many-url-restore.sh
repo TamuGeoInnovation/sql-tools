@@ -3,19 +3,21 @@ set -e
 
 # Usage function to display help
 usage() {
-    echo "Usage: $0 -j '<json_blob>' -p '<db_password>' -s '<sas_key>'"
+    echo "Usage: $0 -j '<json_blob>' -p '<db_password>' -s '<sas_key>' -v '<verbosity>'"
     echo "  -j: JSON blob containing the configuration"
     echo "  -p: Database password (optional if provided in JSON)"
     echo "  -s: SAS key (optional if provided in JSON)"
+    echo "  -v: Verbosity level (optional, default: Default, options: None, Verbose)"
     exit 1
 }
 
 # Parse command-line arguments
-while getopts "j:p:s:" opt; do
+while getopts "j:p:s:v:" opt; do
     case ${opt} in
         j ) json_blob=$OPTARG ;;
         p ) db_password=$OPTARG ;;
         s ) sas_key=$OPTARG ;;
+        v ) verbosity=$OPTARG ;;
         * ) usage ;;
     esac
 done
@@ -48,12 +50,13 @@ echo "$configs" | while read -r config; do
     database_host=$(echo "$config" | jq -r '.host')
     database_name=$(echo "$config" | jq -r '.db')
     restore_options=$(echo "$config" | jq -r '.restoreOptions')
+    verbosity=${verbosity:-"None"}
 
     echo
     echo "Restoring $database_name..."
 
     # Construct the command line for the restore script
-    CMD="$RESTORE_SCRIPT -s \"$local_sas_key\" -c \"$container_url\" -b \"$backup_urls\" -d \"$database_name\" -p \"$local_password\" -h \"$database_host\"" 
+    CMD="$RESTORE_SCRIPT -s \"$local_sas_key\" -c \"$container_url\" -b \"$backup_urls\" -d \"$database_name\" -p \"$local_password\" -h \"$database_host\" -v \"$verbosity\"" 
     
     if [ "$restore_options" != "null" ]; then
         CMD+=" -o \"$restore_options\""

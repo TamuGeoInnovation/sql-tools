@@ -25,11 +25,11 @@ set -e
 
 # Function to print usage
 print_usage() {
-    echo "Usage: $0 -s <SAS key> -c <Azure container URL> -b <Backup URL(s)> -d <Database name> -p <Password> [-h <Hostname> -o <Misc SQL RESTORE options>]"
+    echo "Usage: $0 -s <SAS key> -c <Azure container URL> -b <Backup URL(s)> -d <Database name> -p <Password> [-h <Hostname> -o <Misc SQL RESTORE options> -v <None|Verbose>]"
 }
 
 # Parse command line options
-while getopts ":s:c:b:d:h:p:o:" opt; do
+while getopts ":s:c:b:d:h:p:o:v:" opt; do
     case ${opt} in
         s )
             sas_key=$OPTARG
@@ -51,6 +51,9 @@ while getopts ":s:c:b:d:h:p:o:" opt; do
             ;;
         o )
             restore_options=$OPTARG
+            ;;
+        v )
+            verbose_level=$OPTARG
             ;;
         \? )
             echo "Invalid option: $OPTARG" 1>&2
@@ -79,7 +82,23 @@ if [[ -z $sas_key || -z $container_url || -z $backup_urls || -z $database_name |
 fi
 
 echo
-echo "${reset}Starting database restore"
+echo "Verbosity: $verbose_level"
+
+# If verbose level is set to 'Verbose', print the parameters
+if [[ $verbose_level == "Verbose" ]]; then
+    echo
+    echo "SAS key: $sas_key"
+    echo "Container URL: $container_url"
+    echo "Backup URLs: $backup_urls"
+    echo "Database name: $database_name"
+    echo "Password: $password"
+    echo
+    echo "Restore options: $restore_options"
+    echo
+fi
+
+echo
+echo "${reset}Starting database restore..."
 echo
 
 host="localhost"
