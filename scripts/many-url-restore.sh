@@ -55,8 +55,16 @@ echo "$configs" | while read -r config; do
     echo
     echo "Restoring $database_name..."
 
-    # Construct the command line for the restore script
-    CMD="$RESTORE_SCRIPT -s \"$local_sas_key\" -c \"$container_url\" -b \"$backup_urls\" -d \"$database_name\" -p \"$local_password\" -h \"$database_host\" -v \"$verbosity\"" 
+    cmd=(
+    $RESTORE_SCRIPT                    # This should be the actual command you want to execute
+    -s "$local_sas_key"
+    -c "$container_url"
+    -b "$backup_urls"
+    -d "$database_name"
+    -p "$local_password"
+    -h "$database_host"
+    -v "$verbosity"
+)
     
     if [ "$restore_options" != "null" ]; then
         CMD+=" -o \"$restore_options\""
@@ -69,5 +77,6 @@ echo "$configs" | while read -r config; do
     fi
 
     # Execute the restore script
-    eval $CMD
+    "${cmd[@]}"
+
 done
