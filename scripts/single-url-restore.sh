@@ -178,21 +178,34 @@ echo
 poll_interval=${poll_interval:-30}
 
 # Execute the RESTORE DATABASE command
-sqlcmd -S $host -U sa -P "$password" -b -Q "$restore_command" >/var/log/restore.log &
+sqlcmd -S $host -U sa -P "$password" -b -Q "$restore_command" >/var/log/restore-$database_name.log &
 pid=$!
 
+counter=0
 while kill -0 $pid &>/dev/null; do
+    # If counter is 0, sleep an initial 2 seconds to avoid
+    # printing the status before the restore command is executed
+    if [ $counter -eq 0 ]; then
+        sleep 2
+    fi
+
     # Call restore-status.sh
     ./restore-status.sh -h $host -p $password -i 0
+
+    # Increment the counter
+    counter=$((counter + 1))
 
     sleep $poll_interval
 done
 
 if [ $? -eq 0 ]; then
+    # Print out the contents of the log file
+    cat /var/log/restore-$database_name.log
     echo
     echo "${green}Database '$database_name' has been restored :)${reset}"
     echo
 else
+    cat /var/log/restore-$database_name.log
     echo
     echo "${red}!!! FAILED to restore database '$database_name' !!!${reset}"
     echo
