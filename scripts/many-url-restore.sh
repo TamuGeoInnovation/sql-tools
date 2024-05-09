@@ -3,20 +3,29 @@ set -e
 
 # Usage function to display help
 usage() {
-    echo "Usage: $0 -j '<json_blob>' -p '<db_password>' -s '<sas_key>'"
+    echo
+    echo "Usage: many-url-restore.sh -j '<JSON Blob>' -p <User Password> -s <SAS Key> [-i <Polling Interval (seconds)>] [-v <Verbosity Level>] [-o <Restore Options>]"
+    echo
+    echo "Options:"
     echo "  -j: JSON blob containing the configuration"
+    echo "  -i: Polling interval in seconds (optional). Defaults to 30(s)."
+    echo "  -o: Additional restore options (optional)"
     echo "  -p: Database password (optional if provided in JSON)"
     echo "  -s: SAS key (optional if provided in JSON)"
+    echo "  -v: Verbosity level (optional, default: Default, options: None, Verbose)"
     exit 1
 }
 
 # Parse command-line arguments
-while getopts "j:p:s:" opt; do
+while getopts "j:i:o:p:s:v:" opt; do
     case ${opt} in
-        j ) json_blob=$OPTARG ;;
-        p ) db_password=$OPTARG ;;
-        s ) sas_key=$OPTARG ;;
-        * ) usage ;;
+    j) json_blob=$OPTARG ;;
+    i) polling_interval=$OPTARG ;;
+    o) restore_options=$OPTARG ;;
+    p) db_password=$OPTARG ;;
+    s) sas_key=$OPTARG ;;
+    v) verbosity=$OPTARG ;;
+    *) usage ;;
     esac
 done
 
@@ -47,17 +56,19 @@ echo "$configs" | while read -r config; do
     backup_urls=$(echo "$config" | jq -r '.urls')
     database_host=$(echo "$config" | jq -r '.host')
     database_name=$(echo "$config" | jq -r '.db')
-    restore_options=$(echo "$config" | jq -r '.restoreOptions')
 
     echo
     echo "Restoring $database_name..."
 
-    # Construct the command line for the restore script
-    CMD="$RESTORE_SCRIPT -s \"$local_sas_key\" -c \"$container_url\" -b \"$backup_urls\" -d \"$database_name\" -p \"$local_password\" -h \"$database_host\"" 
-    
-    if [ "$restore_options" != "null" ]; then
-        CMD+=" -o \"$restore_options\""
-    fi
+    cmd=(
+        $RESTORE_SCRIPT # This should be the actual command you want to execute
+        -s "$local_sas_key"
+        -c "$container_url"
+        -b "$backup_urls"
+        -d "$database_name"
+        -p "$local_password"
+        -h "$database_host"
+    )
 
     # If sas_key or password are null, skip the entry
     if [ "$local_sas_key" == "null" ] || [ "$local_password" == "null" ]; then
@@ -65,6 +76,19 @@ echo "$configs" | while read -r config; do
         continue
     fi
 
+    if [ -n "$restore_options" ]; then
+        cmd+=(-o "$restore_options")
+    fi
+
+    if [ -n "$polling_interval" ]; then
+        cmd+=(-i "$polling_interval")
+    fi
+
+    if [ -n "$verbosity" ]; then
+        cmd+=(-v "$verbosity")
+    fi
+
     # Execute the restore script
-    eval $CMD
+    "${cmd[@]}"
+
 done
