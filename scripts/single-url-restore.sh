@@ -16,63 +16,75 @@ set -e
 # - Execute RESTORE FILELISTONLY to extract logical file names
 # - Construct the RESTORE DATABASE command
 # - Execute the RESTORE DATABASE command
-
-# The script also accepts an optional parameter for additional RESTORE options.
-# Example usage:
-# ./url-restore.sh -s "<SAS key>" -c "<Azure container URL>" -b "<Backup URL(s)>" -d "<Database name>" -p "<Password>" -o "REPLACE, STATS = 10"
-#
 #
 
 # Function to print usage
 print_usage() {
-    echo "Usage: $0 -s <SAS key> -c <Azure container URL> -b <Backup URL(s)> -d <Database name> -p <Password> [-h <Hostname> -o <Misc SQL RESTORE options> -v <None|Verbose>]"
+    echo
+    echo "Usage: single-url-restore.sh -s <SAS key> -c <Container URL> -b <Backup URL(s)> -d <Database name> -p <Password> 
+[-h <Hostname>] [-i <Progress interval poll (seconds)>] [-o <Misc SQL RESTORE options>] [-v <Verbose level>]"
+
+    echo
+    echo "Options:"
+    echo "  -s: SAS key for the Azure container"
+    echo "  -c: Azure container URL"
+    echo "  -b: Backup URL(s) (comma separated)"
+    echo "  -d: Database name"
+    echo "  -h: Hostname of the SQL Server (default: localhost)"
+    echo "  -i: Progress interval poll in seconds (default: 30)"
+    echo "  -p: Password for the 'sa' user"
+    echo "  -o: Additional SQL RESTORE options (optional)"
+    echo "  -v: Verbosity level (default: None)"
+
 }
 
 # Parse command line options
-while getopts ":s:c:b:d:h:p:o:v:" opt; do
+while getopts ":s:c:b:d:h:i:p:o:v:" opt; do
     case ${opt} in
-        s )
-            sas_key=$OPTARG
-            ;;
-        c )
-            container_url=$OPTARG
-            ;;
-        b )
-            backup_urls=$OPTARG
-            ;;
-        d )
-            database_name=$OPTARG
-            ;;
-        h )
-            database_host=$OPTARG
-            ;;
-        p )
-            password=$OPTARG
-            ;;
-        o )
-            restore_options=$OPTARG
-            ;;
-        v )
-            verbose_level=$OPTARG
-            ;;
-        \? )
-            echo "Invalid option: $OPTARG" 1>&2
-            print_usage
-            exit 1
-            ;;
-        : )
-            echo "Invalid option: $OPTARG requires an argument" 1>&2
-            print_usage
-            exit 1
-            ;;
+    s)
+        sas_key=$OPTARG
+        ;;
+    c)
+        container_url=$OPTARG
+        ;;
+    b)
+        backup_urls=$OPTARG
+        ;;
+    d)
+        database_name=$OPTARG
+        ;;
+    h)
+        database_host=$OPTARG
+        ;;
+    i)
+        poll_interval=$OPTARG
+        ;;
+    p)
+        password=$OPTARG
+        ;;
+    o)
+        restore_options=$OPTARG
+        ;;
+    v)
+        verbose_level=$OPTARG
+        ;;
+    \?)
+        echo "Invalid option: $OPTARG" 1>&2
+        print_usage
+        exit 1
+        ;;
+    :)
+        echo "Invalid option: $OPTARG requires an argument" 1>&2
+        print_usage
+        exit 1
+        ;;
     esac
 done
-shift $((OPTIND -1))
+shift $((OPTIND - 1))
 
-green=`tput -T xterm setaf 2`
-red=`tput -T xterm setaf 1`
-reset=`tput -T xterm sgr0`
-
+green=$(tput -T xterm setaf 2)
+red=$(tput -T xterm setaf 1)
+reset=$(tput -T xterm sgr0)
 
 # Check if required options are provided
 if [[ -z $sas_key || -z $container_url || -z $backup_urls || -z $database_name || -z $password ]]; then
@@ -81,6 +93,8 @@ if [[ -z $sas_key || -z $container_url || -z $backup_urls || -z $database_name |
     exit 1
 fi
 
+# Set the default verbosity level to 'None'
+verbose_level=${verbose_level:-"None"}
 echo
 echo "Verbosity: $verbose_level"
 
@@ -120,7 +134,7 @@ sqlcmd -S $host -U sa -P "$password" -b -Q "IF EXISTS (SELECT * FROM sys.credent
 sqlcmd -S $host -U sa -P "$password" -b -Q "CREATE CREDENTIAL [$container_url] WITH IDENTITY = 'SHARED ACCESS SIGNATURE', SECRET = '$sas_key';"
 
 # Split multiple URLs into an array
-IFS=',' read -r -a url_array <<< "$backup_urls"
+IFS=',' read -r -a url_array <<<"$backup_urls"
 
 # Construct URL list for FILELISTONLY
 url_list=""
@@ -160,8 +174,19 @@ echo
 echo "$restore_command"
 echo
 
+# Set the default poll interval to 30 seconds
+poll_interval=${poll_interval:-30}
+
 # Execute the RESTORE DATABASE command
-sqlcmd -S $host -U sa -P "$password" -b -Q "$restore_command"
+sqlcmd -S $host -U sa -P "$password" -b -Q "$restore_command" >/var/log/restore.log &
+pid=$!
+
+while kill -0 $pid &>/dev/null; do
+    # Call restore-status.sh
+    ./restore-status.sh -h $host -p $password -i 0
+
+    sleep $poll_interval
+done
 
 if [ $? -eq 0 ]; then
     echo

@@ -8,11 +8,18 @@
 # - Database host: Hostname of the SQL Server
 # - Login username: Username to connect to the SQL Server. Optional, default is 'sa'
 # - Password: Password for the username
-# - Query interval: Interval in seconds to poll the DMV. Optional, default is 30 seconds
+# - Query interval: Interval in seconds to poll the DMV. Optional, default is 30 seconds. Set to 0 to run once.
 
 # Function to print usage
 print_usage() {
-    echo "Usage: $0 -h <Database host> -p <Password> [-u <Login username> -i <Query interval>]"
+    echo
+    echo "Usage: restore-status.sh -h <Database host> -p <Password> [-i <Query interval> -u <Login username>]"
+    echo
+    echo "Options:"
+    echo "  -h: Database host"
+    echo "  -u: Login username (default: sa)"
+    echo "  -p: Password"
+    echo "  -i: Query interval in seconds (default: 30)"
 }
 
 # Parse command line options
@@ -71,7 +78,7 @@ get_restore_status() {
 
     echo "$results" | awk -F'|' '
         BEGIN {
-            print "Command\t\t\tDB Name\t\t\tPercent C`````omplete"
+            print "Command\t\t\tDB Name\t\t\tPercent Complete"
             print "-------\t\t\t-------\t\t\t---------------"
         }
         NR > 2 && $1 ~ /RESTORE DATABASE/ {  # Skip header lines and filter by RESTORE DATABASE
@@ -91,5 +98,10 @@ get_restore_status() {
 # Poll the DMV at the specified interval
 while true; do
     get_restore_status
+
+    if [ "$interval" -eq 0 ]; then
+        break
+    fi
+
     sleep $interval
 done
